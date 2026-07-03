@@ -1,6 +1,6 @@
 # meshcore-mcp
 
-[![CI](https://github.com/Greymantle-Risk-Advisory/meshcore-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Greymantle-Risk-Advisory/meshcore-mcp/actions/workflows/ci.yml)
+[![CI](https://github.com/Greymantle-Risk-Advisory/meshcore-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Greymantle-Risk-Advisory/meshcore-mcp/actions/workflows/ci.yml) 
 
 > **Built with spec-driven AI development.** This project was designed and
 > implemented using AI-assisted, specification-first development practices
