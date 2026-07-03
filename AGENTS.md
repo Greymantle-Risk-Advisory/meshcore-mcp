@@ -14,17 +14,18 @@ touching `src/index.ts` or `src/corescope.ts`.
 
 ```bash
 npm install
-npm test          # vitest — run before every commit
-npm run type-check # tsc --noEmit
-npm run lint:fix   # oxlint --fix
-npm run format     # oxfmt --write .
-npm run dev        # wrangler dev, http://localhost:8787/mcp
-npm run deploy     # wrangler deploy (requires Cloudflare auth)
+npm test           # vitest — run before every commit
+npm run type-check  # tsc --noEmit
+npm run lint:fix    # oxlint --fix
+npm run format      # oxfmt --write .
+npm run dev         # wrangler dev, http://localhost:8787/mcp
+npm run deploy      # wrangler deploy (requires Cloudflare auth)
 ```
 
-All four of `test`, `type-check`, `lint:fix`, `format` should be clean
-before any commit — this is a small repo, there's no excuse for skipping
-one.
+`test`, `type-check`, `lint`, and `format:check` all run in CI
+(`.github/workflows/ci.yml`) on every push and PR — run them locally before
+committing, since a failing CI run on a one-person repo is just a slower
+feedback loop, not a real gate.
 
 ## Conventions
 
