@@ -81,8 +81,7 @@ export class MeshcoreMCP extends McpAgent {
 		this.server.registerTool(
 			"mesh_rf_stats",
 			{
-				description:
-					"RF quality analytics across the mesh (SNR/RSSI distributions).",
+				description: "RF quality analytics across the mesh (SNR/RSSI distributions).",
 				inputSchema: {},
 			},
 			async () => jsonResult(await corescope.getRFStats()),
@@ -91,10 +90,17 @@ export class MeshcoreMCP extends McpAgent {
 }
 
 export default {
-	fetch(request: Request, env: Env, ctx: ExecutionContext) {
+	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
 		const url = new URL(request.url);
 
 		if (url.pathname === "/mcp") {
+			// Key on caller IP so one noisy MCP client can't monopolize the
+			// shared cap against nebraskamesh.net's upstream infra.
+			const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
+			const { success } = await env.RATE_LIMITER.limit({ key: ip });
+			if (!success) {
+				return new Response("Rate limit exceeded", { status: 429 });
+			}
 			return MeshcoreMCP.serve("/mcp").fetch(request, env, ctx);
 		}
 

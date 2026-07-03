@@ -14,6 +14,19 @@ export class CoreScopeError extends Error {
 	}
 }
 
+// MeshCore pubkeys (and the prefixes CoreScope accepts) are hex strings.
+// Restricting to this shape blocks path-segment tricks like ".." or "%2e%2e"
+// from being normalized by `new URL()` into a different /api/* route than
+// the tool intended to expose (e.g. pubkey=".." on /api/nodes/{pk}/health
+// would otherwise resolve to /api/health).
+const pubkeyPattern = /^[0-9a-fA-F]{4,64}$/;
+
+function assertValidPubkey(pubkey: string): void {
+	if (!pubkeyPattern.test(pubkey)) {
+		throw new CoreScopeError(400, `invalid pubkey: ${pubkey}`);
+	}
+}
+
 async function fetchJSON(
 	baseUrl: string,
 	path: string,
@@ -48,25 +61,22 @@ export function getNodes(
 	return fetchJSON(baseUrl, "/api/nodes", opts);
 }
 
-export function getNodeDetail(pubkey: string, baseUrl = DEFAULT_BASE_URL) {
-	return fetchJSON(baseUrl, `/api/nodes/${encodeURIComponent(pubkey)}`);
+export async function getNodeDetail(pubkey: string, baseUrl = DEFAULT_BASE_URL) {
+	assertValidPubkey(pubkey);
+	return fetchJSON(baseUrl, `/api/nodes/${pubkey}`);
 }
 
-export function getNodeHealth(pubkey: string, baseUrl = DEFAULT_BASE_URL) {
-	return fetchJSON(baseUrl, `/api/nodes/${encodeURIComponent(pubkey)}/health`);
+export async function getNodeHealth(pubkey: string, baseUrl = DEFAULT_BASE_URL) {
+	assertValidPubkey(pubkey);
+	return fetchJSON(baseUrl, `/api/nodes/${pubkey}/health`);
 }
 
-export function getNodeNeighbors(pubkey: string, baseUrl = DEFAULT_BASE_URL) {
-	return fetchJSON(
-		baseUrl,
-		`/api/nodes/${encodeURIComponent(pubkey)}/neighbors`,
-	);
+export async function getNodeNeighbors(pubkey: string, baseUrl = DEFAULT_BASE_URL) {
+	assertValidPubkey(pubkey);
+	return fetchJSON(baseUrl, `/api/nodes/${pubkey}/neighbors`);
 }
 
-export function getObservers(
-	opts: { limit?: string },
-	baseUrl = DEFAULT_BASE_URL,
-) {
+export function getObservers(opts: { limit?: string }, baseUrl = DEFAULT_BASE_URL) {
 	return fetchJSON(baseUrl, "/api/observers", opts);
 }
 

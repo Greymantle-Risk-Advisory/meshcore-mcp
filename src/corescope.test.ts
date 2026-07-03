@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	CoreScopeError,
 	getNodeDetail,
+	getNodeHealth,
+	getNodeNeighbors,
 	getNodes,
 	getStats,
 } from "./corescope";
@@ -36,23 +38,44 @@ describe("corescope client", () => {
 		const fetchMock = mockFetch(200, { nodes: [] });
 		vi.stubGlobal("fetch", fetchMock);
 
-		await getNodes(
-			{ search: "cmlj", role: undefined, region: "" },
-			"https://example.test",
-		);
+		await getNodes({ search: "cmlj", role: undefined, region: "" }, "https://example.test");
 
 		const calledUrl = fetchMock.mock.calls[0]?.[0] as string;
 		expect(calledUrl).toBe("https://example.test/api/nodes?search=cmlj");
 	});
 
-	it("getNodeDetail URL-encodes the pubkey path segment", async () => {
+	it("getNodeDetail builds the path from a valid hex pubkey", async () => {
 		const fetchMock = mockFetch(200, {});
 		vi.stubGlobal("fetch", fetchMock);
 
-		await getNodeDetail("ab/cd ef", "https://example.test");
+		await getNodeDetail("a1adcf98", "https://example.test");
 
 		const calledUrl = fetchMock.mock.calls[0]?.[0] as string;
-		expect(calledUrl).toBe("https://example.test/api/nodes/ab%2Fcd%20ef");
+		expect(calledUrl).toBe("https://example.test/api/nodes/a1adcf98");
+	});
+
+	it.each([
+		["path traversal via ..", ".."],
+		["path segment with a slash", "ab/cd"],
+		["non-hex characters", "not-hex!"],
+		["empty string", ""],
+	])("rejects an invalid pubkey without calling fetch: %s", async (_label, badPubkey) => {
+		const fetchMock = mockFetch(200, {});
+		vi.stubGlobal("fetch", fetchMock);
+
+		await expect(getNodeDetail(badPubkey, "https://example.test")).rejects.toThrow(
+			CoreScopeError,
+		);
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it("getNodeHealth and getNodeNeighbors also validate the pubkey", async () => {
+		vi.stubGlobal("fetch", mockFetch(200, {}));
+
+		await expect(getNodeHealth("..", "https://example.test")).rejects.toThrow(CoreScopeError);
+		await expect(getNodeNeighbors("..", "https://example.test")).rejects.toThrow(
+			CoreScopeError,
+		);
 	});
 
 	it("throws CoreScopeError with status on a non-ok response", async () => {
