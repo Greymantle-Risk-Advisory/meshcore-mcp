@@ -2,9 +2,11 @@
 
 `meshcore-mcp` is a stateless-in-spirit MCP proxy running on a single
 Cloudflare Worker. It has no database, no user accounts, and no secrets — it
-translates MCP tool calls into `GET` requests against a CoreScope MeshCore
-analyzer instance chosen by whoever deploys it (`CORESCOPE_BASE_URL`), and
-hands the JSON straight back.
+translates MCP tool calls into `GET` or `POST` requests (three tools use
+`POST` because they need a JSON body, not because they write anything — see
+SECURITY.md) against a CoreScope MeshCore analyzer instance chosen by
+whoever deploys it (`CORESCOPE_BASE_URL`), and hands the JSON straight
+back.
 
 ## Request flow
 

@@ -15,8 +15,9 @@ exposes live telemetry from a [CoreScope](https://github.com/Kpa-clawbot/CoreSco
 MeshCore analyzer instance as MCP tools.
 
 Runs as a Cloudflare Worker. No auth — every wrapped endpoint is an
-unauthenticated public `GET` route on the upstream analyzer, so this server
-holds no credentials and performs no writes. See
+unauthenticated public route on the upstream analyzer (`GET`, or `POST` for
+the few that take a JSON body), so this server holds no credentials and
+performs no writes. See
 [docs/architecture.md](docs/architecture.md) for the request flow and
 [SECURITY.md](SECURITY.md) for the threat model and abuse-resistance
 measures (rate limiting, session TTL, input validation) already in place.
@@ -41,14 +42,17 @@ at deploy time — see Deploy below for how to set them.
 
 ## Tools
 
-| Tool               | Description                                        | Params                                  |
-| ------------------ | -------------------------------------------------- | --------------------------------------- |
-| `mesh_stats`       | Network-wide summary (node/observer/packet counts) | —                                       |
-| `mesh_nodes`       | List/search nodes                                  | `search?`, `role?`, `region?`, `limit?` |
-| `mesh_node_detail` | Profile + health + neighbors for one node          | `pubkey` (hex)                          |
-| `mesh_observers`   | List observer stations                             | `limit?`                                |
-| `mesh_topology`    | Neighbor-graph / topology analytics                | —                                       |
-| `mesh_rf_stats`    | SNR/RSSI distributions across the mesh             | —                                       |
+| Tool                | Description                                                                                | Params                                                                |
+| ------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| `mesh_stats`        | Network-wide summary (node/observer/packet counts)                                         | —                                                                     |
+| `mesh_nodes`        | List/search nodes                                                                          | `search?`, `role?`, `region?`, `limit?`                               |
+| `mesh_node_detail`  | Profile + health + neighbors for one node                                                  | `pubkey` (hex)                                                        |
+| `mesh_observers`    | List observer stations                                                                     | `limit?`                                                              |
+| `mesh_topology`     | Neighbor-graph / topology analytics                                                        | —                                                                     |
+| `mesh_rf_stats`     | SNR/RSSI distributions across the mesh                                                     | —                                                                     |
+| `mesh_observations` | Observation records (who heard it, SNR/RSSI, path) for up to 200 packet hashes in one call | `hashes` (array, 1-200)                                               |
+| `mesh_decode`       | Decode a raw packet from its hex representation                                            | `hex`                                                                 |
+| `mesh_path_inspect` | Infer the most likely full node path from truncated hop prefixes                           | `prefixes` (array, 1-64), `observerId?`, `since?`, `until?`, `limit?` |
 
 ## Develop
 

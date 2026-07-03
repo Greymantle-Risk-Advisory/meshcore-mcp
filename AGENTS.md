@@ -42,10 +42,15 @@ feedback loop, not a real gate.
   turns "server misconfigured" into a readable MCP tool error instead of
   an unhandled exception.
 - **New tools wrap exactly one thing.** Each `mesh_*` tool maps to one (or
-  a small combined set of) CoreScope `GET` endpoint. Don't add a tool that
-  needs new upstream write capability — this server is read-only by design
-  (see SECURITY.md's "why there's no auth" section) and that's load-bearing
-  for the whole no-auth posture, not incidental.
+  a small combined set of) CoreScope endpoint, `GET` or `POST`. `POST` is
+  fine for endpoints that need a JSON body, but never wrap one that writes
+  or mutates anything upstream — this server is read-only by design (see
+  SECURITY.md's "why there's no auth" section) and that's load-bearing for
+  the whole no-auth posture, not incidental. Before wrapping any new
+  endpoint, **read its actual handler implementation upstream**, not just
+  the route registration — the route table alone doesn't tell you whether
+  a `POST` writes state (see the `mesh_observations`/`mesh_decode`/
+  `mesh_path_inspect` additions, each verified this way before being added).
 - **Local dev config**: copy `.dev.vars.example` to `.dev.vars` (gitignored)
   to point `wrangler dev` at a real CoreScope instance without touching
   `wrangler.jsonc`.

@@ -144,6 +144,58 @@ export class MeshcoreMCP extends McpAgent {
 			},
 			async () => guarded(this.env, (baseUrl) => corescope.getRFStats(baseUrl)),
 		);
+
+		// The next three wrap upstream POST endpoints — POST because they take
+		// a JSON body, not because they write anything. All three are
+		// unauthenticated on the upstream, same as every other tool here; see
+		// SECURITY.md for the reasoning (confirmed by reading the actual
+		// handler implementations, not just the route registration).
+
+		this.server.registerTool(
+			"mesh_observations",
+			{
+				description: `Look up observation records (who heard it, SNR/RSSI, path) for up to 200 packet hashes on ${meshName} in one call.`,
+				inputSchema: { hashes: z.array(z.string()).min(1).max(200) },
+			},
+			async ({ hashes }) =>
+				guarded(this.env, (baseUrl) => corescope.getBatchObservations(hashes, baseUrl)),
+		);
+
+		this.server.registerTool(
+			"mesh_decode",
+			{
+				description:
+					"Decode a raw MeshCore packet from its hex representation into header, route, and payload fields. Pure decode, no lookup against any mesh's data.",
+				inputSchema: { hex: z.string().min(1) },
+			},
+			async ({ hex }) => guarded(this.env, (baseUrl) => corescope.decodePacket(hex, baseUrl)),
+		);
+
+		this.server.registerTool(
+			"mesh_path_inspect",
+			{
+				description: `Given truncated hop-ID prefixes seen in a packet's route on ${meshName}, infer the most likely full node path with per-hop confidence scores and alternatives.`,
+				inputSchema: {
+					prefixes: z
+						.array(z.string())
+						.min(1)
+						.max(64)
+						.describe(
+							"Even-length hex prefixes, all the same byte length, max 3 bytes (6 hex chars) each.",
+						),
+					observerId: z.string().optional(),
+					since: z.string().optional(),
+					until: z.string().optional(),
+					limit: z.number().int().min(1).max(50).optional(),
+				},
+			},
+			async ({ prefixes, observerId, since, until, limit }) =>
+				guarded(this.env, (baseUrl) => {
+					const context =
+						observerId || since || until ? { observerId, since, until } : undefined;
+					return corescope.inspectPath(prefixes, context, limit, baseUrl);
+				}),
+		);
 	}
 }
 

@@ -55,6 +55,34 @@ async function fetchJSON(
 	return res.json();
 }
 
+// POST variant for the handful of upstream endpoints that take a JSON body
+// (they're POST because they need a body, not because they write anything —
+// see SECURITY.md). Not edge-cached: a POST body isn't part of Cloudflare's
+// default cache key, so caching here would risk serving one caller's
+// response to another with a different body.
+async function postJSON(baseUrl: string, path: string, body: unknown): Promise<unknown> {
+	const url = new URL(path, baseUrl);
+	const res = await fetch(url.toString(), {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(body),
+	});
+	if (!res.ok) {
+		// Upstream returns a specific {"error": "..."} body on 400s for these
+		// endpoints (e.g. "prefixes must be even-length hex") — surface that
+		// instead of just the generic status text when it's available.
+		let detail = res.statusText;
+		try {
+			const errBody = (await res.json()) as { error?: string };
+			if (errBody?.error) detail = errBody.error;
+		} catch {
+			// body wasn't JSON (or was empty) — fall back to statusText
+		}
+		throw new CoreScopeError(res.status, `CoreScope request failed: ${res.status} ${detail}`);
+	}
+	return res.json();
+}
+
 export function getStats(baseUrl: string) {
 	return fetchJSON(baseUrl, "/api/stats");
 }
@@ -91,4 +119,56 @@ export function getTopology(baseUrl: string) {
 
 export function getRFStats(baseUrl: string) {
 	return fetchJSON(baseUrl, "/api/analytics/rf");
+}
+
+// Mirrors upstream's own limit (cmd/server/routes.go handleBatchObservations)
+// so a too-large request fails fast with a clear MCP error instead of a
+// generic upstream 400.
+const maxObservationHashes = 200;
+
+export async function getBatchObservations(hashes: string[], baseUrl: string) {
+	if (hashes.length > maxObservationHashes) {
+		throw new CoreScopeError(
+			400,
+			`too many hashes (max ${maxObservationHashes}, got ${hashes.length})`,
+		);
+	}
+	return postJSON(baseUrl, "/api/packets/observations", { hashes });
+}
+
+export async function decodePacket(hex: string, baseUrl: string) {
+	const trimmed = hex.trim();
+	if (!trimmed) {
+		throw new CoreScopeError(400, "hex is required");
+	}
+	return postJSON(baseUrl, "/api/decode", { hex: trimmed });
+}
+
+export interface PathInspectContext {
+	observerId?: string;
+	since?: string;
+	until?: string;
+}
+
+// Mirrors upstream's own bounds (cmd/server/path_inspect.go): 1-64 prefixes,
+// even-length hex, all the same byte length, max 3 bytes (6 hex chars) each.
+// Upstream validates all of this itself and returns a specific error message
+// per violation, so this only checks the cheap, unambiguous case (count) —
+// everything else is left to postJSON's error-detail passthrough rather than
+// duplicating upstream's exact validation rules here.
+const maxPathInspectPrefixes = 64;
+
+export async function inspectPath(
+	prefixes: string[],
+	context: PathInspectContext | undefined,
+	limit: number | undefined,
+	baseUrl: string,
+) {
+	if (prefixes.length === 0 || prefixes.length > maxPathInspectPrefixes) {
+		throw new CoreScopeError(
+			400,
+			`prefixes must be 1-${maxPathInspectPrefixes} items (got ${prefixes.length})`,
+		);
+	}
+	return postJSON(baseUrl, "/api/paths/inspect", { prefixes, context, limit });
 }
