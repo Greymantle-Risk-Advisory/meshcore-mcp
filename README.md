@@ -74,3 +74,10 @@ Claude Desktop (via [mcp-remote](https://www.npmjs.com/package/mcp-remote)):
 	}
 }
 ```
+
+## License
+
+[GPL-3.0-or-later](LICENSE). This project is released **unsupported and
+with no warranty of any kind** — see the license for the full disclaimer.
+That said, pull requests are welcome; see [AGENTS.md](AGENTS.md) for the
+conventions this codebase expects.
