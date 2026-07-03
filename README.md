@@ -58,28 +58,37 @@ Deployed config lives in `wrangler.jsonc`'s `vars` (see Configuration above).
 **Automatic:** every push to `main` that passes CI deploys via
 `.github/workflows/ci.yml`'s `deploy` job
 ([cloudflare/wrangler-action](https://github.com/cloudflare/wrangler-action)).
-That job needs two things set up once, neither of which is committed:
+Neither the account ID nor the API token is committed anywhere — both are
+repo secrets, set once:
 
-1. `account_id` in `wrangler.jsonc` — not a secret, but currently a
-   placeholder (`CHANGEME_CLOUDFLARE_ACCOUNT_ID`). Find it under Workers &
-   Pages → Overview in the Cloudflare dashboard, or `wrangler whoami`.
-2. A `CLOUDFLARE_API_TOKEN` repo secret — create a token scoped to just
-   _Edit Cloudflare Workers_ (not the global API key), then:
-    ```bash
-    gh secret set CLOUDFLARE_API_TOKEN --repo Greymantle-Risk-Advisory/meshcore-mcp
-    ```
-    Run that yourself in your own terminal so the token is never pasted
-    into a chat, PR, or commit — `gh` prompts for it without echoing.
+```bash
+gh secret set CLOUDFLARE_ACCOUNT_ID --repo Greymantle-Risk-Advisory/meshcore-mcp
+gh secret set CLOUDFLARE_API_TOKEN --repo Greymantle-Risk-Advisory/meshcore-mcp
+```
+
+Run those yourself in your own terminal so neither value is ever pasted
+into a chat, PR, or commit — `gh` prompts for each without echoing.
+
+- **Account ID**: Workers & Pages → Overview in the Cloudflare dashboard
+  (right sidebar), or `wrangler whoami`. It's a 32-character hex string,
+  not your account email.
+- **API token**: create a _custom_ token (not the "Edit Cloudflare
+  Workers" template — that bundles Routes/KV/R2 permissions this project
+  doesn't use) scoped to exactly one permission: **Account → Workers
+  Scripts → Edit**. That single scope covers the Worker script, Durable
+  Object migrations, and bindings — everything `wrangler deploy` needs
+  for a `*.workers.dev` deployment with no custom domain.
 
 The deploy job only runs on `push` to `main`, never on `pull_request` (GitHub
 Actions doesn't expose secrets to fork PRs by default anyway, but this
 is an explicit second gate, not just a reliance on that default). See
 [SECURITY.md](SECURITY.md) for the full reasoning.
 
-**Manual:**
+**Manual:** `wrangler` also needs the account ID as a real env var for
+local commands (`wrangler.jsonc` intentionally has no `account_id` field):
 
 ```bash
-npm run deploy
+CLOUDFLARE_ACCOUNT_ID=<your account id> npm run deploy
 ```
 
 ## Connect a client

@@ -60,14 +60,19 @@ inertia.
 
 ## Before touching `.github/workflows/ci.yml`
 
-The `deploy` job runs `wrangler deploy` with a Cloudflare API token secret
-on every push to `main`. This is a public repo, so:
+The `deploy` job runs `wrangler deploy` with two Cloudflare credentials
+(`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) on every push to `main`.
+This is a public repo, so:
 
 - Never change the `deploy` job's trigger to run on `pull_request` (only
-  `push` to `main`) — that would expose `CLOUDFLARE_API_TOKEN` to anyone
-  who opens a PR, fork or not.
+  `push` to `main`) — that would expose both secrets to anyone who opens a
+  PR, fork or not.
 - Never add a step to `deploy` that echoes, logs, or otherwise surfaces
-  `secrets.CLOUDFLARE_API_TOKEN`.
+  `secrets.CLOUDFLARE_API_TOKEN` or `secrets.CLOUDFLARE_ACCOUNT_ID`.
+- Never add `account_id` to `wrangler.jsonc` — it's intentionally absent so
+  neither credential is committed, even though Cloudflare itself doesn't
+  treat the account ID as sensitive. Wrangler picks it up from the
+  `CLOUDFLARE_ACCOUNT_ID` env var instead.
 - If you're proposing this change as a PR from a fork: expect the `deploy`
   job to simply not run for you (no secret access) — that's correct
   behavior, not a bug to work around.
