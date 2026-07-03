@@ -2,3 +2,4 @@
 # deploy time — production config lives in wrangler.jsonc's `vars` block,
 # since CORESCOPE_BASE_URL is a public URL, not a secret.
 CORESCOPE_BASE_URL=https://your-corescope-instance.example.com
+MESH_NAME=Your Mesh Name

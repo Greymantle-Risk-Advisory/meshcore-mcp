@@ -55,6 +55,11 @@
 	// `wrangler secret put`.
 	"vars": {
 		"CORESCOPE_BASE_URL": "https://changeme.invalid",
+		// Human-readable mesh name, used in MCP tool descriptions (e.g.
+		// "Network-wide summary stats for {MESH_NAME}"). Cosmetic only —
+		// unlike CORESCOPE_BASE_URL this has no security implication, so
+		// it just falls back to a generic phrase if left unset.
+		"MESH_NAME": "this MeshCore network",
 	},
 	/**
 	 * Smart Placement

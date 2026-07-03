@@ -29,6 +29,11 @@ deploying — it's a plain public URL, not a secret, so a `vars` entry is
 fine. Left at its placeholder value, every tool call fails with a clear
 config error instead of silently hitting some other mesh's server.
 
+`MESH_NAME` (also in `vars`) is your mesh's human-readable name, used in
+MCP tool descriptions (e.g. "Network-wide summary stats for _Nebraska
+Mesh_"). Purely cosmetic — falls back to a generic phrase if unset, no
+config error like `CORESCOPE_BASE_URL`.
+
 ## Tools
 
 | Tool               | Description                                        | Params                                  |

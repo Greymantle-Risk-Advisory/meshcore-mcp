@@ -73,11 +73,15 @@ export class MeshcoreMCP extends McpAgent {
 	}
 
 	async init() {
+		// Cosmetic only (unlike CORESCOPE_BASE_URL, an empty/placeholder value
+		// here has no security implication) — just falls back to a generic
+		// phrase so tool descriptions still read sensibly if unset.
+		const meshName = this.env.MESH_NAME || "this MeshCore network";
+
 		this.server.registerTool(
 			"mesh_stats",
 			{
-				description:
-					"Network-wide summary stats for the Nebraska MeshCore mesh (node/observer/packet counts).",
+				description: `Network-wide summary stats for ${meshName} (node/observer/packet counts).`,
 				inputSchema: {},
 			},
 			async () => guarded(this.env, (baseUrl) => corescope.getStats(baseUrl)),
@@ -86,8 +90,7 @@ export class MeshcoreMCP extends McpAgent {
 		this.server.registerTool(
 			"mesh_nodes",
 			{
-				description:
-					"List/search mesh nodes, optionally filtered by name search, role, or region.",
+				description: `List/search nodes on ${meshName}, optionally filtered by name search, role, or region.`,
 				inputSchema: {
 					search: z.string().optional(),
 					role: z.string().optional(),
@@ -101,8 +104,7 @@ export class MeshcoreMCP extends McpAgent {
 		this.server.registerTool(
 			"mesh_node_detail",
 			{
-				description:
-					"Full detail for one node by pubkey: profile, health, and known neighbors.",
+				description: `Full detail for one node on ${meshName} by pubkey: profile, health, and known neighbors.`,
 				inputSchema: { pubkey: z.string() },
 			},
 			async ({ pubkey }) =>
@@ -119,8 +121,7 @@ export class MeshcoreMCP extends McpAgent {
 		this.server.registerTool(
 			"mesh_observers",
 			{
-				description:
-					"List observer stations (the receivers feeding packet data into the analyzer).",
+				description: `List observer stations on ${meshName} (the receivers feeding packet data into the analyzer).`,
 				inputSchema: { limit: z.string().optional() },
 			},
 			async (opts) => guarded(this.env, (baseUrl) => corescope.getObservers(opts, baseUrl)),
@@ -129,7 +130,7 @@ export class MeshcoreMCP extends McpAgent {
 		this.server.registerTool(
 			"mesh_topology",
 			{
-				description: "Mesh network topology / neighbor-graph analytics.",
+				description: `${meshName} network topology / neighbor-graph analytics.`,
 				inputSchema: {},
 			},
 			async () => guarded(this.env, (baseUrl) => corescope.getTopology(baseUrl)),
@@ -138,7 +139,7 @@ export class MeshcoreMCP extends McpAgent {
 		this.server.registerTool(
 			"mesh_rf_stats",
 			{
-				description: "RF quality analytics across the mesh (SNR/RSSI distributions).",
+				description: `RF quality analytics across ${meshName} (SNR/RSSI distributions).`,
 				inputSchema: {},
 			},
 			async () => guarded(this.env, (baseUrl) => corescope.getRFStats(baseUrl)),
