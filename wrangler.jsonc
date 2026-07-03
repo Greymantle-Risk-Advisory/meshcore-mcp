@@ -48,12 +48,17 @@
 			},
 		},
 	],
-	// CHANGE ME before deploying — the CoreScope MeshCore analyzer instance
-	// this server proxies. No default is baked in so a fresh deploy doesn't
-	// silently start sending traffic to someone else's mesh. Not a secret
-	// (it's a public instance URL), so a plain var is fine — no need for
-	// `wrangler secret put`.
+	// Placeholders only — these are the fallback for a bare `npm run deploy`
+	// with no overrides. The CI deploy job (.github/workflows/ci.yml)
+	// overrides both via `wrangler deploy --var`, sourced from repo
+	// variables (not secrets — a public URL and a display name, neither
+	// sensitive) so the real values aren't committed here either. Not a
+	// secret either way — no need for `wrangler secret put`.
 	"vars": {
+		// CHANGE ME before a manual deploy — the CoreScope MeshCore analyzer
+		// instance this server proxies. No default is baked in so a fresh
+		// deploy doesn't silently start sending traffic to someone else's
+		// mesh.
 		"CORESCOPE_BASE_URL": "https://changeme.invalid",
 		// Human-readable mesh name, used in MCP tool descriptions (e.g.
 		// "Network-wide summary stats for {MESH_NAME}"). Cosmetic only —

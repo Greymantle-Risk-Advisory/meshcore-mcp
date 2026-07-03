@@ -45,4 +45,12 @@ jobs:
               with:
                   apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-                  command: deploy
+                  # CORESCOPE_BASE_URL/MESH_NAME aren't secrets (a public URL,
+                  # a display name) but also aren't committed to
+                  # wrangler.jsonc — repo variables + --var override the
+                  # config's placeholder vars at deploy time. Single-quoted
+                  # so MESH_NAME's space survives shell tokenization.
+                  command: >-
+                      deploy
+                      --var 'CORESCOPE_BASE_URL:${{ vars.CORESCOPE_BASE_URL }}'
+                      --var 'MESH_NAME:${{ vars.MESH_NAME }}'

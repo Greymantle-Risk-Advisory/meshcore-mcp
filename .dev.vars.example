@@ -1,5 +1,7 @@
 # Copy to .dev.vars (gitignored) for local `wrangler dev`. Not read at
-# deploy time — production config lives in wrangler.jsonc's `vars` block,
-# since CORESCOPE_BASE_URL is a public URL, not a secret.
+# deploy time — CI deploys with these sourced from GitHub repo variables
+# (not secrets — neither value is sensitive) via `wrangler deploy --var`,
+# and a bare `npm run deploy` falls back to wrangler.jsonc's placeholders.
+# See README's Deploy section.
 CORESCOPE_BASE_URL=https://your-corescope-instance.example.com
 MESH_NAME=Your Mesh Name

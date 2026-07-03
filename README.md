@@ -1,6 +1,6 @@
 # meshcore-mcp
 
-[![CI](https://github.com/Greymantle-Risk-Advisory/meshcore-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Greymantle-Risk-Advisory/meshcore-mcp/actions/workflows/ci.yml) 
+[![CI](https://github.com/Greymantle-Risk-Advisory/meshcore-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Greymantle-Risk-Advisory/meshcore-mcp/actions/workflows/ci.yml)
 
 > **Built with spec-driven AI development.** This project was designed and
 > implemented using AI-assisted, specification-first development practices
@@ -23,16 +23,21 @@ measures (rate limiting, session TTL, input validation) already in place.
 
 ## Configuration
 
-No upstream is baked in. Set `CORESCOPE_BASE_URL` in `wrangler.jsonc`
-(`vars`) to the CoreScope instance you want this server to proxy before
-deploying — it's a plain public URL, not a secret, so a `vars` entry is
-fine. Left at its placeholder value, every tool call fails with a clear
-config error instead of silently hitting some other mesh's server.
+Two values configure which mesh this server talks about — neither is
+committed to the repo, and neither is a secret (a public URL and a display
+name), so both are set as **GitHub repo variables** rather than
+`wrangler.jsonc` fields or Actions secrets:
 
-`MESH_NAME` (also in `vars`) is your mesh's human-readable name, used in
-MCP tool descriptions (e.g. "Network-wide summary stats for _Nebraska
-Mesh_"). Purely cosmetic — falls back to a generic phrase if unset, no
-config error like `CORESCOPE_BASE_URL`.
+- `CORESCOPE_BASE_URL` — the CoreScope instance this server proxies. No
+  default is baked in; `wrangler.jsonc` has an obvious placeholder so a
+  fresh manual deploy fails loudly with a config error instead of silently
+  hitting some other mesh's server.
+- `MESH_NAME` — human-readable name used in MCP tool descriptions (e.g.
+  "Network-wide summary stats for _Nebraska Mesh_"). Purely cosmetic — no
+  config error if unset, just a generic fallback phrase.
+
+CI deploys with `wrangler deploy --var`, reading these from repo variables
+at deploy time — see Deploy below for how to set them.
 
 ## Tools
 
@@ -56,7 +61,6 @@ npm run dev        # wrangler dev, serves on http://localhost:8787/mcp
 ```
 
 `.dev.vars` is gitignored and only used by `wrangler dev` — it never ships.
-Deployed config lives in `wrangler.jsonc`'s `vars` (see Configuration above).
 
 ## Deploy
 
@@ -83,17 +87,40 @@ into a chat, PR, or commit — `gh` prompts for each without echoing.
   Scripts → Edit**. That single scope covers the Worker script, Durable
   Object migrations, and bindings — everything `wrangler deploy` needs
   for a `*.workers.dev` deployment with no custom domain.
+  ⚠️ The permission's resource must be **Account** (pick your account by
+  name), not **Zone**/a specific domain — a zone-scoped policy looks
+  plausible in the token editor but fails with an opaque `Authentication
+error [code: 10000]` on every deploy, since the Workers deploy API is an
+  account-level call.
 
 The deploy job only runs on `push` to `main`, never on `pull_request` (GitHub
 Actions doesn't expose secrets to fork PRs by default anyway, but this
 is an explicit second gate, not just a reliance on that default). See
 [SECURITY.md](SECURITY.md) for the full reasoning.
 
+`CORESCOPE_BASE_URL` and `MESH_NAME` are repo **variables**, not secrets —
+set once:
+
+```bash
+gh variable set CORESCOPE_BASE_URL --repo Greymantle-Risk-Advisory/meshcore-mcp --body "https://your-corescope-instance.example.com"
+gh variable set MESH_NAME --repo Greymantle-Risk-Advisory/meshcore-mcp --body "Your Mesh Name"
+```
+
+The `deploy` job passes both to `wrangler deploy --var`, overriding
+`wrangler.jsonc`'s placeholders at deploy time without committing the real
+values anywhere.
+
 **Manual:** `wrangler` also needs the account ID as a real env var for
-local commands (`wrangler.jsonc` intentionally has no `account_id` field):
+local commands (`wrangler.jsonc` intentionally has no `account_id` field),
+and the config's `CORESCOPE_BASE_URL`/`MESH_NAME` placeholders unless you
+also pass `--var`:
 
 ```bash
 CLOUDFLARE_ACCOUNT_ID=<your account id> npm run deploy
+# or, to override the placeholders too:
+CLOUDFLARE_ACCOUNT_ID=<your account id> npx wrangler deploy \
+  --var 'CORESCOPE_BASE_URL:https://your-corescope-instance.example.com' \
+  --var 'MESH_NAME:Your Mesh Name'
 ```
 
 ## Connect a client
