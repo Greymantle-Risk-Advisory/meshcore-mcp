@@ -1,8 +1,13 @@
-// Thin read-only client for the CoreScope MeshCore analyzer API.
-// All endpoints used here are unauthenticated public GET routes (see
-// upstream cmd/server/routes.go) — no API key required or sent.
-
-export const DEFAULT_BASE_URL = "https://nebraskamesh.net";
+// Thin read-only client for a CoreScope MeshCore analyzer instance. All
+// endpoints used here are unauthenticated public GET routes (see upstream
+// cmd/server/routes.go) — no API key required or sent.
+//
+// No default upstream is baked in here — every function takes an explicit
+// baseUrl so this stays a generic CoreScope client rather than a proxy
+// wired to one specific community's server. The deployed Worker resolves
+// which instance to use from the CORESCOPE_BASE_URL env var (see
+// src/index.ts) so anyone deploying this template points it at their own
+// mesh's analyzer instead of inheriting the original author's.
 
 export class CoreScopeError extends Error {
 	constructor(
@@ -50,40 +55,40 @@ async function fetchJSON(
 	return res.json();
 }
 
-export function getStats(baseUrl = DEFAULT_BASE_URL) {
+export function getStats(baseUrl: string) {
 	return fetchJSON(baseUrl, "/api/stats");
 }
 
 export function getNodes(
 	opts: { search?: string; role?: string; region?: string; limit?: string },
-	baseUrl = DEFAULT_BASE_URL,
+	baseUrl: string,
 ) {
 	return fetchJSON(baseUrl, "/api/nodes", opts);
 }
 
-export async function getNodeDetail(pubkey: string, baseUrl = DEFAULT_BASE_URL) {
+export async function getNodeDetail(pubkey: string, baseUrl: string) {
 	assertValidPubkey(pubkey);
 	return fetchJSON(baseUrl, `/api/nodes/${pubkey}`);
 }
 
-export async function getNodeHealth(pubkey: string, baseUrl = DEFAULT_BASE_URL) {
+export async function getNodeHealth(pubkey: string, baseUrl: string) {
 	assertValidPubkey(pubkey);
 	return fetchJSON(baseUrl, `/api/nodes/${pubkey}/health`);
 }
 
-export async function getNodeNeighbors(pubkey: string, baseUrl = DEFAULT_BASE_URL) {
+export async function getNodeNeighbors(pubkey: string, baseUrl: string) {
 	assertValidPubkey(pubkey);
 	return fetchJSON(baseUrl, `/api/nodes/${pubkey}/neighbors`);
 }
 
-export function getObservers(opts: { limit?: string }, baseUrl = DEFAULT_BASE_URL) {
+export function getObservers(opts: { limit?: string }, baseUrl: string) {
 	return fetchJSON(baseUrl, "/api/observers", opts);
 }
 
-export function getTopology(baseUrl = DEFAULT_BASE_URL) {
+export function getTopology(baseUrl: string) {
 	return fetchJSON(baseUrl, "/api/analytics/topology");
 }
 
-export function getRFStats(baseUrl = DEFAULT_BASE_URL) {
+export function getRFStats(baseUrl: string) {
 	return fetchJSON(baseUrl, "/api/analytics/rf");
 }

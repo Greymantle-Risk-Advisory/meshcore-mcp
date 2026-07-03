@@ -7,6 +7,38 @@ function jsonResult(data: unknown) {
 	return { content: [{ type: "text" as const, text: JSON.stringify(data) }] };
 }
 
+function errorResult(message: string) {
+	return {
+		content: [{ type: "text" as const, text: message }],
+		isError: true as const,
+	};
+}
+
+// Matches the placeholder in wrangler.jsonc's `vars.CORESCOPE_BASE_URL`. No
+// real upstream is baked in — a fresh deploy that forgets to set this
+// should fail loudly with a helpful tool error, not silently start sending
+// traffic to whatever instance the template's original author used.
+const PLACEHOLDER_BASE_URL = "https://changeme.invalid";
+
+// Runs a tool body, resolving the configured CoreScope base URL and turning
+// any thrown error (missing config, invalid pubkey, upstream failure) into
+// an MCP tool error result instead of an unhandled exception.
+async function guarded(env: Env, work: (baseUrl: string) => Promise<unknown>) {
+	try {
+		const baseUrl = env.CORESCOPE_BASE_URL;
+		if (!baseUrl || baseUrl === PLACEHOLDER_BASE_URL) {
+			throw new Error(
+				"This server has no CoreScope instance configured. The operator " +
+					"needs to set CORESCOPE_BASE_URL in wrangler.jsonc to their " +
+					"CoreScope deployment's URL before this tool can be used.",
+			);
+		}
+		return jsonResult(await work(baseUrl));
+	} catch (err) {
+		return errorResult(err instanceof Error ? err.message : String(err));
+	}
+}
+
 // Each MCP session backs onto its own Durable Object (Cloudflare's `agents`
 // framework). With no auth, anyone can open a session, so without a ceiling
 // an attacker could accumulate unbounded DOs over time. SESSION_TTL_SECONDS
@@ -16,9 +48,10 @@ function jsonResult(data: unknown) {
 // growing without limit. See onStart()/selfDestruct() below.
 const SESSION_TTL_SECONDS = 15 * 60;
 
-// Public, read-only MCP proxy over the CoreScope MeshCore analyzer running
-// at nebraskamesh.net. All wrapped endpoints are unauthenticated GET routes
-// on the upstream — this server holds no credentials and performs no writes.
+// Public, read-only MCP proxy over an operator-configured CoreScope MeshCore
+// analyzer instance (CORESCOPE_BASE_URL). All wrapped endpoints are
+// unauthenticated GET routes on the upstream — this server holds no
+// credentials and performs no writes.
 export class MeshcoreMCP extends McpAgent {
 	server = new McpServer({
 		name: "meshcore-mcp",
@@ -47,7 +80,7 @@ export class MeshcoreMCP extends McpAgent {
 					"Network-wide summary stats for the Nebraska MeshCore mesh (node/observer/packet counts).",
 				inputSchema: {},
 			},
-			async () => jsonResult(await corescope.getStats()),
+			async () => guarded(this.env, (baseUrl) => corescope.getStats(baseUrl)),
 		);
 
 		this.server.registerTool(
@@ -62,7 +95,7 @@ export class MeshcoreMCP extends McpAgent {
 					limit: z.string().optional(),
 				},
 			},
-			async (opts) => jsonResult(await corescope.getNodes(opts)),
+			async (opts) => guarded(this.env, (baseUrl) => corescope.getNodes(opts, baseUrl)),
 		);
 
 		this.server.registerTool(
@@ -72,14 +105,15 @@ export class MeshcoreMCP extends McpAgent {
 					"Full detail for one node by pubkey: profile, health, and known neighbors.",
 				inputSchema: { pubkey: z.string() },
 			},
-			async ({ pubkey }) => {
-				const [detail, health, neighbors] = await Promise.all([
-					corescope.getNodeDetail(pubkey),
-					corescope.getNodeHealth(pubkey),
-					corescope.getNodeNeighbors(pubkey),
-				]);
-				return jsonResult({ detail, health, neighbors });
-			},
+			async ({ pubkey }) =>
+				guarded(this.env, async (baseUrl) => {
+					const [detail, health, neighbors] = await Promise.all([
+						corescope.getNodeDetail(pubkey, baseUrl),
+						corescope.getNodeHealth(pubkey, baseUrl),
+						corescope.getNodeNeighbors(pubkey, baseUrl),
+					]);
+					return { detail, health, neighbors };
+				}),
 		);
 
 		this.server.registerTool(
@@ -89,7 +123,7 @@ export class MeshcoreMCP extends McpAgent {
 					"List observer stations (the receivers feeding packet data into the analyzer).",
 				inputSchema: { limit: z.string().optional() },
 			},
-			async (opts) => jsonResult(await corescope.getObservers(opts)),
+			async (opts) => guarded(this.env, (baseUrl) => corescope.getObservers(opts, baseUrl)),
 		);
 
 		this.server.registerTool(
@@ -98,7 +132,7 @@ export class MeshcoreMCP extends McpAgent {
 				description: "Mesh network topology / neighbor-graph analytics.",
 				inputSchema: {},
 			},
-			async () => jsonResult(await corescope.getTopology()),
+			async () => guarded(this.env, (baseUrl) => corescope.getTopology(baseUrl)),
 		);
 
 		this.server.registerTool(
@@ -107,7 +141,7 @@ export class MeshcoreMCP extends McpAgent {
 				description: "RF quality analytics across the mesh (SNR/RSSI distributions).",
 				inputSchema: {},
 			},
-			async () => jsonResult(await corescope.getRFStats()),
+			async () => guarded(this.env, (baseUrl) => corescope.getRFStats(baseUrl)),
 		);
 	}
 }
@@ -118,7 +152,7 @@ export default {
 
 		if (url.pathname === "/mcp") {
 			// Key on caller IP so one noisy MCP client can't monopolize the
-			// shared cap against nebraskamesh.net's upstream infra.
+			// shared cap against the configured CoreScope instance's upstream infra.
 			const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
 			const { success } = await env.RATE_LIMITER.limit({ key: ip });
 			if (!success) {

@@ -30,9 +30,10 @@
 		"enabled": true,
 	},
 	"upload_source_maps": true,
-	// Per-IP request cap on /mcp — protects nebraskamesh.net (the real mesh
-	// community's server) from being hammered through this public, authless
-	// proxy. 60 req/min/IP is generous for normal tool use.
+	// Per-IP request cap on /mcp — protects the configured CoreScope
+	// instance (CORESCOPE_BASE_URL, someone else's server) from being
+	// hammered through this public, authless proxy. 60 req/min/IP is
+	// generous for normal tool use.
 	"ratelimits": [
 		{
 			"name": "RATE_LIMITER",
@@ -43,6 +44,14 @@
 			},
 		},
 	],
+	// CHANGE ME before deploying — the CoreScope MeshCore analyzer instance
+	// this server proxies. No default is baked in so a fresh deploy doesn't
+	// silently start sending traffic to someone else's mesh. Not a secret
+	// (it's a public instance URL), so a plain var is fine — no need for
+	// `wrangler secret put`.
+	"vars": {
+		"CORESCOPE_BASE_URL": "https://changeme.invalid",
+	},
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
@@ -54,13 +63,6 @@
 	 * databases, object storage, AI inference, real-time communication and more.
 	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
 	 */
-	/**
-	 * Environment Variables
-	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
-	 * Note: Use secrets to store sensitive data.
-	 * https://developers.cloudflare.com/workers/configuration/secrets/
-	 */
-	// "vars": {  "MY_VARIABLE": "production_value" }
 	/**
 	 * Static Assets
 	 * https://developers.cloudflare.com/workers/static-assets/binding/

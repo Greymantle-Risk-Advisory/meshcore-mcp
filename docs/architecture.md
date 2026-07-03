@@ -2,9 +2,9 @@
 
 `meshcore-mcp` is a stateless-in-spirit MCP proxy running on a single
 Cloudflare Worker. It has no database, no user accounts, and no secrets — it
-translates MCP tool calls into `GET` requests against one fixed upstream,
-[nebraskamesh.net](https://nebraskamesh.net) (a public CoreScope MeshCore
-analyzer instance), and hands the JSON straight back.
+translates MCP tool calls into `GET` requests against a CoreScope MeshCore
+analyzer instance chosen by whoever deploys it (`CORESCOPE_BASE_URL`), and
+hands the JSON straight back.
 
 ## Request flow
 
@@ -14,7 +14,7 @@ sequenceDiagram
     participant Worker as Cloudflare Worker (/mcp)
     participant RL as Rate Limiter binding
     participant DO as MeshcoreMCP Durable Object (session)
-    participant CoreScope as nebraskamesh.net (CoreScope API)
+    participant CoreScope as CORESCOPE_BASE_URL (operator-configured CoreScope API)
 
     Client->>Worker: MCP request (initialize / tools/call)
     Worker->>RL: limit({ key: CF-Connecting-IP })
@@ -25,7 +25,7 @@ sequenceDiagram
         RL-->>Worker: success: true
         Worker->>DO: route to session (creates one on first connect)
         DO->>DO: onStart() schedules selfDestruct at now+15min (idempotent)
-        DO->>CoreScope: GET /api/... (fixed base URL, validated params)
+        DO->>CoreScope: GET /api/... (operator-configured base URL, validated params)
         CoreScope-->>DO: JSON
         DO-->>Client: MCP tool result
     end
@@ -39,9 +39,11 @@ sequenceDiagram
   unauthenticated public `GET` route — there's no private data or write
   capability behind it, so there's nothing an API key would protect. See
   [SECURITY.md](../SECURITY.md) for the full reasoning.
-- **One fixed upstream.** `DEFAULT_BASE_URL` in `src/corescope.ts` is a
-  hardcoded constant. No code path threads a caller-supplied host into a
-  fetch, so this can't be turned into an open SSRF proxy to arbitrary hosts.
+- **One operator-configured upstream, never per-request.** `CORESCOPE_BASE_URL`
+  is a deploy-time Worker var (`wrangler.jsonc`), resolved once per tool call
+  from `env`. No MCP tool input — no argument, no header — ever reaches the
+  `fetch()` host, so this can't be turned into an open SSRF proxy to
+  arbitrary hosts regardless of which instance the operator points it at.
 - **Durable Objects, bounded.** The `agents` framework backs each MCP
   session with a Durable Object. Without a ceiling, an authless service
   could accumulate DOs indefinitely as sessions pile up. `SESSION_TTL_SECONDS`
@@ -49,8 +51,9 @@ sequenceDiagram
   every session's lifetime regardless of how active it is.
 - **Rate limiting protects the upstream, not us.** The Cloudflare Rate
   Limiting binding (`wrangler.jsonc`, 60 req/min/IP) exists primarily so a
-  noisy or buggy MCP client can't hammer nebraskamesh.net — someone else's
-  community infrastructure — through this proxy.
+  noisy or buggy MCP client can't hammer whatever CoreScope instance is
+  configured — likely someone else's community infrastructure — through
+  this proxy.
 
 ## Files
 

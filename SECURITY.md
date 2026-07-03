@@ -4,12 +4,13 @@
 
 This is a small, public, unauthenticated MCP server. It holds no secrets,
 no user data, and no write capability — it's a read-only proxy over data
-that's already public on [nebraskamesh.net](https://nebraskamesh.net). The
-threat model is scoped accordingly: the goal isn't to protect private data
-(there isn't any), it's to make sure this proxy can't be turned into a
-vector for abusing something else — either Cloudflare resources on this
-account, or the upstream CoreScope server, which belongs to the Nebraska
-mesh community, not this project.
+that's already public on whichever CoreScope instance the operator
+configures (`CORESCOPE_BASE_URL`; no default is baked in). The threat model
+is scoped accordingly: the goal isn't to protect private data (there isn't
+any), it's to make sure this proxy can't be turned into a vector for
+abusing something else — either Cloudflare resources on the deploying
+account, or the upstream CoreScope server, which belongs to whichever mesh
+community runs it, not this project.
 
 ## Why there's no auth
 
@@ -24,13 +25,14 @@ requests.
 
 ## Mitigations in place
 
-| Risk                                                                                                              | Mitigation                                                                                                                  | Where                                                             |
-| ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| SSRF to arbitrary hosts                                                                                           | Upstream base URL is a hardcoded constant; no caller input ever reaches the `fetch()` host                                  | `src/corescope.ts` (`DEFAULT_BASE_URL`)                           |
-| Path confusion via crafted `pubkey` (e.g. `..` normalizing through `new URL()` into an unintended `/api/*` route) | `pubkey` is validated against a strict hex pattern before being used in any path                                            | `src/corescope.ts` (`assertValidPubkey`)                          |
-| Hammering nebraskamesh.net through this proxy                                                                     | Per-IP Cloudflare Rate Limiting, 60 req/min                                                                                 | `wrangler.jsonc` (`ratelimits`), `src/index.ts`                   |
-| Unbounded Durable Object accumulation (one per MCP session, no auth gating creation)                              | Every session self-destructs 15 minutes after creation regardless of activity, dropping its storage                         | `src/index.ts` (`SESSION_TTL_SECONDS`, `onStart`, `selfDestruct`) |
-| Cache poisoning / cross-caller data bleed                                                                         | Cloudflare's edge cache key includes the full URL + query string, so different filter params land in distinct cache entries | `src/corescope.ts` (`cf.cacheEverything`)                         |
+| Risk                                                                                                              | Mitigation                                                                                                                                                          | Where                                                             |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| SSRF to arbitrary hosts                                                                                           | Upstream base URL comes only from the deploy-time `CORESCOPE_BASE_URL` var, resolved server-side; no MCP tool input (args, headers) ever reaches the `fetch()` host | `wrangler.jsonc` (`vars`), `src/index.ts` (`guarded`)             |
+| Path confusion via crafted `pubkey` (e.g. `..` normalizing through `new URL()` into an unintended `/api/*` route) | `pubkey` is validated against a strict hex pattern before being used in any path                                                                                    | `src/corescope.ts` (`assertValidPubkey`)                          |
+| Hammering the configured CoreScope instance through this proxy                                                    | Per-IP Cloudflare Rate Limiting, 60 req/min                                                                                                                         | `wrangler.jsonc` (`ratelimits`), `src/index.ts`                   |
+| Unbounded Durable Object accumulation (one per MCP session, no auth gating creation)                              | Every session self-destructs 15 minutes after creation regardless of activity, dropping its storage                                                                 | `src/index.ts` (`SESSION_TTL_SECONDS`, `onStart`, `selfDestruct`) |
+| Cache poisoning / cross-caller data bleed                                                                         | Cloudflare's edge cache key includes the full URL + query string, so different filter params land in distinct cache entries                                         | `src/corescope.ts` (`cf.cacheEverything`)                         |
+| Fresh deploy silently proxying to an unintended/unowned instance                                                  | `CORESCOPE_BASE_URL` defaults to an obvious placeholder; every tool call fails with a clear config error until it's set                                             | `wrangler.jsonc`, `src/index.ts` (`PLACEHOLDER_BASE_URL`)         |
 
 ## Known, accepted risk
 
@@ -45,8 +47,8 @@ untrusted data, not instructions.
 
 ## Reporting an issue
 
-This is a hobby project with a small blast radius, but if you find a way to
+This is a small project with a small blast radius, but if you find a way to
 turn it into an open proxy, a DoS amplifier, or anything else that reaches
-past its own Durable Object, please open an issue or reach out to
-[@commandline-johnny](https://github.com/commandline-johnny) directly
-rather than filing a public issue with exploit details.
+past its own Durable Object, please reach out to
+[Greymantle Risk Advisory](https://github.com/Greymantle-Risk-Advisory)
+directly rather than filing a public issue with exploit details.
