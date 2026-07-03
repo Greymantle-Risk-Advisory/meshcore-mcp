@@ -65,10 +65,11 @@ npm run dev        # wrangler dev, serves on http://localhost:8787/mcp
 ## Deploy
 
 **Automatic:** every push to `main` that passes CI deploys via
-`.github/workflows/ci.yml`'s `deploy` job
-([cloudflare/wrangler-action](https://github.com/cloudflare/wrangler-action)).
-Neither the account ID nor the API token is committed anywhere — both are
-repo secrets, set once:
+`.github/workflows/ci.yml`'s `deploy` job (`npx wrangler deploy` directly —
+not the `cloudflare/wrangler-action` GitHub Action, whose `command:` input
+does naive whitespace-splitting with no real shell, which mangles
+`--var` values containing spaces like `MESH_NAME`). Neither the account ID
+nor the API token is committed anywhere — both are repo secrets, set once:
 
 ```bash
 gh secret set CLOUDFLARE_ACCOUNT_ID --repo Greymantle-Risk-Advisory/meshcore-mcp

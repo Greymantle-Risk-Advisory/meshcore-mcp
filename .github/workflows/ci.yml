@@ -41,16 +41,28 @@ jobs:
 
             - run: npm ci
 
-            - uses: cloudflare/wrangler-action@v3
-              with:
-                  apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-                  accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-                  # CORESCOPE_BASE_URL/MESH_NAME aren't secrets (a public URL,
-                  # a display name) but also aren't committed to
-                  # wrangler.jsonc — repo variables + --var override the
-                  # config's placeholder vars at deploy time. Single-quoted
-                  # so MESH_NAME's space survives shell tokenization.
-                  command: >-
-                      deploy
-                      --var 'CORESCOPE_BASE_URL:${{ vars.CORESCOPE_BASE_URL }}'
-                      --var 'MESH_NAME:${{ vars.MESH_NAME }}'
+            # Runs wrangler directly (not cloudflare/wrangler-action) so the
+            # CORESCOPE_BASE_URL/MESH_NAME overrides go through a real shell.
+            # wrangler-action's `command:` input does naive whitespace-split
+            # tokenization with no shell involved, so quoted values with
+            # embedded spaces (MESH_NAME) get mangled — confirmed by testing
+            # locally, a deploy that way produced garbage-named bindings.
+            #
+            # ${{ vars.* }} is bound via `env:` and referenced as $VAR rather
+            # than interpolated directly into the run script: GitHub Actions
+            # substitutes ${{ }} expressions as raw text before the shell
+            # ever sees the line, so embedding one directly in a command is
+            # injectable if the variable's value ever contains shell
+            # metacharacters. Only repo admins can set these vars today, but
+            # routing through env + $VAR costs nothing and removes the class
+            # of bug entirely.
+            - name: Deploy
+              env:
+                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+                  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+                  CORESCOPE_BASE_URL: ${{ vars.CORESCOPE_BASE_URL }}
+                  MESH_NAME: ${{ vars.MESH_NAME }}
+              run: >-
+                  npx wrangler deploy
+                  --var "CORESCOPE_BASE_URL:$CORESCOPE_BASE_URL"
+                  --var "MESH_NAME:$MESH_NAME"
