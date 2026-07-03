@@ -1,5 +1,13 @@
 # meshcore-mcp
 
+> **Built with spec-driven AI development.** This project was designed and
+> implemented using AI-assisted, specification-first development practices
+> (Claude Code), under the direction and review of a senior engineer and
+> security professional at [Greymantle Risk Advisory](https://github.com/Greymantle-Risk-Advisory).
+> Architecture, security posture, and every change were human-reviewed
+> before merge — see [SECURITY.md](SECURITY.md) for the threat model and
+> [docs/architecture.md](docs/architecture.md) for the design rationale.
+
 A public, read-only [MCP](https://modelcontextprotocol.io) server that
 exposes live telemetry from a [CoreScope](https://github.com/Kpa-clawbot/CoreScope)
 MeshCore analyzer instance as MCP tools.
@@ -33,11 +41,15 @@ config error instead of silently hitting some other mesh's server.
 ## Develop
 
 ```bash
+cp .dev.vars.example .dev.vars   # point local dev at a real CoreScope instance
 npm install
 npm test          # vitest
 npm run type-check
 npm run dev        # wrangler dev, serves on http://localhost:8787/mcp
 ```
+
+`.dev.vars` is gitignored and only used by `wrangler dev` — it never ships.
+Deployed config lives in `wrangler.jsonc`'s `vars` (see Configuration above).
 
 ## Deploy
 
