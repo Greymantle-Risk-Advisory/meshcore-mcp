@@ -7,6 +7,15 @@ function jsonResult(data: unknown) {
 	return { content: [{ type: "text" as const, text: JSON.stringify(data) }] };
 }
 
+// Each MCP session backs onto its own Durable Object (Cloudflare's `agents`
+// framework). With no auth, anyone can open a session, so without a ceiling
+// an attacker could accumulate unbounded DOs over time. SESSION_TTL_SECONDS
+// caps every session's lifetime from creation — self-destructing (dropping
+// its storage) regardless of activity — so the live/stored DO count stays
+// bounded by (rate-limit-capped creation rate) x (this TTL) instead of
+// growing without limit. See onStart()/selfDestruct() below.
+const SESSION_TTL_SECONDS = 15 * 60;
+
 // Public, read-only MCP proxy over the CoreScope MeshCore analyzer running
 // at nebraskamesh.net. All wrapped endpoints are unauthenticated GET routes
 // on the upstream — this server holds no credentials and performs no writes.
@@ -15,6 +24,20 @@ export class MeshcoreMCP extends McpAgent {
 		name: "meshcore-mcp",
 		version: "1.0.0",
 	});
+
+	async onStart(props?: Record<string, unknown>) {
+		await super.onStart(props);
+		// idempotent: true means this schedule is only created once per
+		// session (repeat calls on DO wake are no-ops) — the TTL runs from
+		// first connect, it does not reset on activity.
+		await this.schedule(SESSION_TTL_SECONDS, "selfDestruct", undefined, {
+			idempotent: true,
+		});
+	}
+
+	async selfDestruct() {
+		await this.destroy();
+	}
 
 	async init() {
 		this.server.registerTool(
