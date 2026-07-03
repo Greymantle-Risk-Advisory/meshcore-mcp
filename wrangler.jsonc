@@ -9,6 +9,12 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "meshcore-mcp",
+	// CHANGE ME before deploying — your Cloudflare Account ID (Dashboard >
+	// Workers & Pages overview, right sidebar; or `wrangler whoami`). Not
+	// sensitive, safe to commit — only the deploy API token is a secret,
+	// and that lives in the CLOUDFLARE_API_TOKEN GitHub Actions secret,
+	// never in this file.
+	"account_id": "CHANGEME_CLOUDFLARE_ACCOUNT_ID",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-03-10",
 	"compatibility_flags": ["nodejs_compat"],

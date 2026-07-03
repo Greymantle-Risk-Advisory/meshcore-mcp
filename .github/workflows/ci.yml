@@ -21,3 +21,27 @@ jobs:
             - run: npm run lint
             - run: npm run format:check
             - run: npm test
+
+    deploy:
+        needs: check
+        # push only — pull_request (including from forks) never gets secret
+        # access from GitHub Actions by default, but gating explicitly here
+        # means a future workflow edit can't accidentally widen that.
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
+
+            - run: npm ci
+
+            - uses: cloudflare/wrangler-action@v3
+              with:
+                  apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+                  command: deploy

@@ -55,6 +55,29 @@ Deployed config lives in `wrangler.jsonc`'s `vars` (see Configuration above).
 
 ## Deploy
 
+**Automatic:** every push to `main` that passes CI deploys via
+`.github/workflows/ci.yml`'s `deploy` job
+([cloudflare/wrangler-action](https://github.com/cloudflare/wrangler-action)).
+That job needs two things set up once, neither of which is committed:
+
+1. `account_id` in `wrangler.jsonc` — not a secret, but currently a
+   placeholder (`CHANGEME_CLOUDFLARE_ACCOUNT_ID`). Find it under Workers &
+   Pages → Overview in the Cloudflare dashboard, or `wrangler whoami`.
+2. A `CLOUDFLARE_API_TOKEN` repo secret — create a token scoped to just
+   _Edit Cloudflare Workers_ (not the global API key), then:
+    ```bash
+    gh secret set CLOUDFLARE_API_TOKEN --repo Greymantle-Risk-Advisory/meshcore-mcp
+    ```
+    Run that yourself in your own terminal so the token is never pasted
+    into a chat, PR, or commit — `gh` prompts for it without echoing.
+
+The deploy job only runs on `push` to `main`, never on `pull_request` (GitHub
+Actions doesn't expose secrets to fork PRs by default anyway, but this
+is an explicit second gate, not just a reliance on that default). See
+[SECURITY.md](SECURITY.md) for the full reasoning.
+
+**Manual:**
+
 ```bash
 npm run deploy
 ```

@@ -57,3 +57,17 @@ runtime consequences on a public, no-auth service. Re-read
 [SECURITY.md](SECURITY.md)'s mitigations table first — most fields in that
 file exist because of a specific abuse scenario, not by default-template
 inertia.
+
+## Before touching `.github/workflows/ci.yml`
+
+The `deploy` job runs `wrangler deploy` with a Cloudflare API token secret
+on every push to `main`. This is a public repo, so:
+
+- Never change the `deploy` job's trigger to run on `pull_request` (only
+  `push` to `main`) — that would expose `CLOUDFLARE_API_TOKEN` to anyone
+  who opens a PR, fork or not.
+- Never add a step to `deploy` that echoes, logs, or otherwise surfaces
+  `secrets.CLOUDFLARE_API_TOKEN`.
+- If you're proposing this change as a PR from a fork: expect the `deploy`
+  job to simply not run for you (no secret access) — that's correct
+  behavior, not a bug to work around.
